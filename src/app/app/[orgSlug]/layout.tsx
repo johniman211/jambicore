@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useUser, logout } from '@/hooks/useUser';
 import {
     LayoutDashboard,
     FolderKanban,
@@ -70,7 +71,25 @@ export default function AppLayout({ children, params }: AppLayoutProps) {
     const [orgSlug, setOrgSlug] = useState<string>('');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const pathname = usePathname();
+    const router = useRouter();
+    const { user, loading: userLoading } = useUser();
+
+    const handleLogout = async () => {
+        try {
+            setIsLoggingOut(true);
+            await logout();
+            router.push('/login');
+        } catch (error) {
+            console.error('Logout failed:', error);
+            setIsLoggingOut(false);
+        }
+    };
+
+    // Get display name from user metadata or email
+    const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+    const userRole = user?.user_metadata?.role || 'Member';
 
     useEffect(() => {
         params.then((p) => setOrgSlug(p.orgSlug));
@@ -254,12 +273,19 @@ export default function AppLayout({ children, params }: AppLayoutProps) {
                             </button>
 
                             <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
-                                <UserAvatar name="Demo User" size="sm" />
+                                <UserAvatar name={displayName} size="sm" />
                                 <div className="hidden sm:block">
-                                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Demo User</p>
-                                    <p className="text-xs text-slate-400">Org Admin</p>
+                                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                                        {userLoading ? 'Loading...' : displayName}
+                                    </p>
+                                    <p className="text-xs text-slate-400">{userRole}</p>
                                 </div>
-                                <button className="p-2 text-slate-400 hover:text-slate-600">
+                                <button
+                                    onClick={handleLogout}
+                                    disabled={isLoggingOut}
+                                    className="p-2 text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                                    title="Logout"
+                                >
                                     <LogOut className="w-4 h-4" />
                                 </button>
                             </div>
